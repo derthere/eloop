@@ -1,0 +1,103 @@
+
+#include "DHT.h"
+
+
+//dht initial
+#define DHTPIN 2  
+#define DHTTYPE DHT22 
+DHT dht(DHTPIN, DHTTYPE);
+
+// Water Conductivity Monitor
+const float ArduinoVoltage = 5.00; // CHANGE THIS FOR 3.3v Arduinos
+const float ArduinoResolution = ArduinoVoltage / 1024;
+const float resistorValue = 10000.0;
+int threshold = 3;
+int H20inputPin = A3;
+int H20ouputPin = 3;
+
+//AQ sensors
+int ozone ;
+int VOC ;
+int soil;
+
+String sensorNames[6] = {
+   "volatile organic compound","ozone", "water", "temperature", "humidity", "soil"};
+
+
+void setup()
+
+{
+  Serial.begin(115200);
+  
+  pinMode(H20ouputPin, OUTPUT);
+  pinMode(H20inputPin, INPUT);
+
+  dht.begin();
+  
+  delay(40000); //wait to calibrate before starting to log
+}
+
+void loop()
+{
+  VOC = analogRead(A0);
+  ozone = analogRead(A1);
+  soil = analogRead(A2);
+
+  //read from dht
+  
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  // check if returns are valid, if they are NaN (not a number) then something went wrong!
+  if (isnan(t) || isnan(h)) {
+    Serial.println("Failed to read from DHT");
+  } 
+ 
+
+
+  //water conductivity 
+  int analogValue=0;
+  int oldAnalogValue=1000;
+  float returnVoltage=0.0;
+  float resistance=0.0;
+  double Siemens;
+  float TDS=0.0;
+
+  while(((oldAnalogValue-analogValue)>threshold) || (oldAnalogValue<50))
+  {
+    oldAnalogValue = analogValue;
+    digitalWrite( H20ouputPin, HIGH );
+    delay(10); // allow ringing to stop
+    analogValue = analogRead( H20inputPin );
+    digitalWrite( H20ouputPin, LOW );
+  }
+
+
+  returnVoltage = analogValue *ArduinoResolution;  
+  resistance = ((5.00 * resistorValue) / returnVoltage) - resistorValue;
+  Siemens = 1.0/(resistance/1000000);
+  TDS = 500 * (Siemens/1000);
+  //Serial.print("Total Dissolved Solids is on the order of");
+  //
+  //Serial.println(" PPM.");
+
+  if(returnVoltage>4.9) Serial.println("Are you sure this isn't metal?");
+
+    Serial.print(VOC); //water
+    Serial.print("."); 
+    Serial.print(ozone); //water
+    Serial.print("."); 
+    Serial.print(TDS); //water
+    Serial.print("."); 
+     Serial.print(t);//temperature
+    Serial.print(".");
+    Serial.print(h); //humidity
+    Serial.print("."); 
+    Serial.print(soil); //water
+ 
+   
+   
+
+  delay(2000);
+}
+
