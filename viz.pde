@@ -1,4 +1,3 @@
-
 //for the cirlce
 int segs;
 int steps = 8;
